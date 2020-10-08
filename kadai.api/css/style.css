@@ -1,0 +1,67 @@
+
+body{
+    width: 700px;
+    margin: 0 auto;
+}
+#key{
+    display: none;
+}
+
+table{
+    margin: 0 auto;
+    width:700px;
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 2px;
+    padding-top: 15px;
+}
+th{
+    line-height: 20px;
+    font-size:14px;
+    background-color:gray;
+    overflow-wrap : break-word;
+    text-align: center;
+    color: white;
+    font-weight: normal;
+    padding: 1px;
+}
+td{
+    font-size:12px;
+    background-color:rgb(241, 239, 239);
+    overflow-wrap : break-word;
+    padding: 1px;
+}
+
+.loc{
+    padding-top: 20px;
+    padding-bottom: 20px;
+    margin: 0 auto;
+    width:600px;
+    font-size: 14px;
+}
+p{
+    text-align: center;
+    padding-bottom: 10px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+#btn{
+    display: block;
+    text-align: center;
+    margin: 0 auto;
+}
+
+.jouken{
+    padding-bottom: 20px;
+    margin: 0 auto;
+    width:600px;
+}
+.jouken_list{
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    font-size: 14px;
+    width:600px;
+    margin: 0 auto;
+}

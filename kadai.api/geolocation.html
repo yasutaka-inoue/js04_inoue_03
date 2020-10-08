@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<link rel="stylesheet" href="css/reset.css">
+<link rel="stylesheet" href="css/style.css">
+<title>Map:Geolocation + gurunavi</title>
+</head>
+<body>
+
+<!-- MAP[START] -->
+<div id="myMap" style='width:700px;height:400px;'></div>
+<!-- MAP[END] -->
+
+<div class= "loc">
+    <p>検索エリア</p>
+    <ul>
+        <li>
+          <input type="radio" name="location" id="now" checked="checked"><label for="now">現在地</label>
+        </li>
+        <li>
+          <input type="radio" name="location" id="other"><label for="other">その他</label>
+          <input id="key" value="" type="text" size="45">
+          緯度lat: <input type="text" id="lat" disabled="disabled">
+          経度lon: <input type="text" id="lon" disabled="disabled">
+        </li>
+    </ul>
+</div>
+<div class="jouken">
+    <p>検索条件を追加</p>
+    <ul class="jouken_list">
+        <li><input type="radio" name="lunch" id="lunch" onclick="radioDeselection(this, 1)" ><label for="lunch">ランチ営業あり</label></li>
+        <li><input type="radio" name="no_smoking" id="no_smoking" onclick="radioDeselection(this, 2)"><label for="no_smoking">禁煙席あり</label></li>
+        <li><input type="radio" name="bottomless_cup" id="bottomless_cup" onclick="radioDeselection(this, 3)"><label for="bottomless_cup">飲み放題あり</label></li>
+        <li><input type="radio" name="takeout" id="takeout" onclick="radioDeselection(this, 4)"><label for="takeout">テイクアウトあり</label></li>
+        <li><input type="radio" name="private_room" id="private_room" onclick="radioDeselection(this, 5)"><label for="private_room">個室あり</label></li>
+        <li><input type="radio" name="outret" id="outret" onclick="radioDeselection(this, 6)"><label for="outret">電源あり</label></li>
+    </ul>    
+</div>
+    <input type="button" id="btn" value="検索">
+</div>
+
+<table id="table">
+    <tr>
+        <th>店舗名</th>
+        <th>営業時間</th>
+        <th>カテゴリー</th>
+        <th>電話番号</th>
+    </tr>
+</table>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+<script src='https://www.bing.com/api/maps/mapcontrol?callback=GetMap&key=' async defer></script>
+<script src="js/BmapQuery.js"></script>
+<script>
+// ラジオボタン処理・定義
+let l =0;
+let ns =0;
+let bc =0
+let to =0;
+let pr =0;
+let o =0;
+
+// ラジオボタン押したら解除
+var remove = 0;
+function radioDeselection(already, numeric) {
+  if(remove == numeric) {
+    already.checked = false;
+    remove = 0;
+  } else {
+    remove = numeric;
+  }
+}
+//****************************************************************************************
+// BingMaps&BmapQuery
+//****************************************************************************************
+//Init
+function GetMap(){
+    //------------------------------------------------------------------------
+    //1. Instance
+    //------------------------------------------------------------------------
+    const map = new Bmap("#myMap");
+
+    //------------------------------------------------------------------------
+    //2. geolocation: Display Map
+    //   map.geolocation(function(data:object){...});
+    //------------------------------------------------------------------------
+    map.geolocation(function(data) {
+        //現在地取得
+        let lat = data.coords.latitude;
+        let lon = data.coords.longitude;
+        //Map表示
+        map.startMap(lat, lon, "load", 16);
+        //pin表示
+        map.pin(lat,lon,"#0000ff");
+        // 配列を持っていて、ループで回せば、いろいろ一気に出せる
+        
+        //*****************************************************
+        // Click Event
+        // ぐるなびAPIへデータRequest → APIサーバーからresponseデータ取得 
+        //*****************************************************
+        $("#btn").on("click", function() {
+            // 各条件にチェックされているか確認
+            const check_l = $('input[name=lunch]:eq(0)').prop('checked');
+            if (check_l==true) {l=1;}else{l=0;}
+            const check_ns = $('input[name=no_smoking]:eq(0)').prop('checked');
+            if (check_ns==true) {ns=1;}else{ns=0;}
+            const check_bc= $('input[name=bottomless_cup]:eq(0)').prop('checked');
+            if (check_bc==true) {bc=1;}else{bc=0;}
+            const check_to = $('input[name=takeout]:eq(0)').prop('checked');
+            if (check_to==true) {to=1;}else{to=0;}
+            const check_pr = $('input[name=private_room]:eq(0)').prop('checked');
+            if (check_pr==true) {pr=1;}else{pr=0;}
+            const check_o = $('input[name=outret]:eq(0)').prop('checked');
+            if (check_o==true) {o=1;}else{o=0;}
+
+            // 場所その他にチェックされているか確認
+            const check = $('input[name=location]:eq(1)').prop('checked');
+            // されていないなら、現在時刻を参照
+            if(check == false){
+                //送信データをObject変数で用意
+                //参考URL:https://api.gnavi.co.jp/api/manual/restsearch/
+                // 条件を渡す
+                lat = data.coords.latitude;
+                lon = data.coords.longitude;
+                //Map表示
+                map.startMap(lat, lon, "load", 16);
+                //pin表示
+                map.pin(lat,lon,"#0000ff");
+                const g_data = {
+                    keyid:$("#key").val(),
+                    latitude: lat,
+                    longitude: lon,
+                    range:3,
+                    lunch: l,
+                    no_smoking: ns,
+                    bottomless_cup: bc,
+                    takeout: to,
+                    private_room: pr,
+                    outret: o
+                };
+
+                //Ajax（非同期通信）
+                axios.get('https://api.gnavi.co.jp/RestSearchAPI/v3/', {
+                    params:g_data
+                })
+                .then(function (response) {
+                    //データ受信成功！！showData関数にデータを渡す
+                    showData(response.data);
+                    }).catch(function (error) {
+                        console.log(error);//通信Error
+                        alert("検索条件に合うお店が付近にありません");
+                        $("#table").find("tr:gt(0)").remove();
+                        let d = map.deletePin();
+                        map.pin(lat,lon,"#0000ff");
+                        return false;
+                    }).then(function () {
+                        //console.log("Last");//通信OK/Error後に処理を必ずさせたい場合
+                    });
+                }
+                if(check == true){
+                lat = $("#lat").val();
+                lon = $("#lon").val();
+                map.startMap(lat, lon, "load", 16);
+                //pin表示
+                map.pin(lat,lon,"#0000ff");
+                const g_data = {
+                    keyid:$("#key").val(),
+                    latitude: lat,
+                    longitude: lon,
+                    range:3,
+                    lunch: l,
+                    no_smoking: ns,
+                    bottomless_cup: bc,
+                    takeout: to,
+                    private_room: pr,
+                    outret: o
+                };
+                //Ajax（非同期通信）
+                axios.get('https://api.gnavi.co.jp/RestSearchAPI/v3/', {
+                    params:g_data
+                })
+                .then(function (response) {
+                    //データ受信成功！！showData関数にデータを渡す
+                    showData(response.data);
+                    }).catch(function (error) {
+                        console.log(error);//通信Error
+                        alert("検索条件に合うお店が付近にありません");
+                        $("#table").find("tr:gt(0)").remove();
+                        let d = map.deletePin();
+                        map.pin(lat,lon,"#0000ff");
+                    }).then(function () {
+                        //console.log("Last");//通信OK/Error後に処理を必ずさせたい場合
+                    });
+            }  
+        });
+
+        //*****************************************************
+        //ぐるなびデータ表示処理
+        //*****************************************************
+        function showData(data){
+            //古いもの削除
+            $("#table").find("tr:gt(0)").remove();
+            let d = map.deletePin();
+            map.pin(lat,lon,"#0000ff");
+            //データ確認用
+            console.log(data.rest);
+            //データを繰り返し処理で取得
+            const len  = data.rest.length; //データ数を取得
+            for( let i=0; i<len; i++){
+                // どのデータとるか指示して、tableに表示させる
+                $("#table").append('<tr><td><a href="'+ data.rest[i].url +'">' + data.rest[i].name + '</a></td><td>' + data.rest[i].opentime + '</td><td>' + data.rest[i].category + '</td><td>' + data.rest[i].tel + '</td></tr>');
+                //----------------------------------------------------
+                //3. Add Pushpin-Text
+                // pinText(lat, lon, "title", "subtitle", "text");
+                //----------------------------------------------------
+                let pin = map.pinText(data.rest[i].latitude, data.rest[i].longitude, data.rest[i].name,data.rest[i].category);
+            };
+        } 
+    });
+}
+
+// 2.検索場所の選択
+// その他がクリックされたら、緯度経度のdisabledを解除
+$("#other").change(function() {
+    $("#lat, #lon").prop('disabled', false);
+});
+// 現在地がクリックされたら、緯度経度をdisabledに
+$("#now").change(function(){
+    $("#lat, #lon").prop('disabled', true);
+});
+
+$("now").change(function(){
+    $("#other").prop("checked", false);
+});
+
+</script>
+</body>
+</html>
